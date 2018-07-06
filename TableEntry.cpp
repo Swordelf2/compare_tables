@@ -1,61 +1,117 @@
 #include "TableEntry.h"
 
+#include "csv_parse.h"
+#include "LineReader.h"
+
 #include <string>
-#include <array>
+#include <sstream>
+#include <vector>
 #include <cstdlib>
+#include <iostream>
 
-std::array<unsigned, ENTRY_ELEM_CNT> TableEntry::elem_positions = {2, 6};
+// TEMPORARY!!
+#include <iomanip>
 
-TableEntry::TableEntry(char *line)
+// positions of policy_id and price
+std::vector<unsigned> TableEntry::elem_positions = {1, 2};
+// positions of full_name
+std::vector<unsigned> Discrepancy::elem_positions[2] = {{0}, {0}};
+LineReader *Discrepancy::lr = NULL;
+
+/* ## TableEntry class ## */
+
+TableEntry::TableEntry(unsigned line_num, const char *line) : line_num(line_num)
 {
-    unsigned cur_pos = 0;
-    // get policy_id
-    while (cur_pos < elem_positions[0]) {
-        // skip to next element in the row
-        while (*line && *line != ';') {
-            ++line;
-        }
-        ++cur_pos;
-        if (*line == '\0') {
-            throw std::logic_error("Invalid file format");
-        }
-        ++line;
-    }
-    char *end_elem = line;
-    while (*end_elem && *end_elem != ';') {
-        ++end_elem;
+    std::vector<std::pair<const char *, size_t>> els;
+    try {
+        els = csv_parse_line(line, elem_positions);
+    } catch (int col) {
+        throw_format_exc(line_num, col);
     }
 
-    policy_id = std::string(line, end_elem - line);
-    line = end_elem;
-    if (*line == '\0') {
-        throw std::logic_error("Invalid file format");
-    }
+    // set policy_id
+    policy_id = std::string(els[0].first, els[0].second);
 
-    // get price
-    while (cur_pos < elem_positions[1]) {
-        // skip to next element in the row
-        while (*line && *line != SEPERATOR) {
-            ++line;
+    // set price
+    const char *price_str = els[1].first;
+    char * end_ptr;
+    price = strtoul(price_str, &end_ptr, 0);
+    price *= 100u;
+    if (*end_ptr == ',' || *end_ptr == '.') {
+        ++end_ptr;
+        unsigned cnt = price_str + els[1].second - end_ptr;
+        if (cnt > 2 || cnt == 0) {
+            throw_format_exc(line_num, elem_positions[1]);
         }
-        ++cur_pos;
-        if (*line == '\0') {
-            throw std::logic_error("Invalid file format");
+        unsigned leftover = strtoul(end_ptr, &end_ptr, 0);
+        if (end_ptr != price_str + els[1].second) {
+            throw_format_exc(line_num, elem_positions[1]);
         }
+        if (cnt == 1) {
+            leftover *= 10;
+        }
+        price += leftover;
     }
-    end_elem = line;
-    while (*end_elem && *end_elem != SEPERATOR) {
-        // change ',' to decimal dot
-        if (*end_elem == ',') {
-            *end_elem = '.';
-            break;
-        }
-        ++end_elem;
-    }
-    price = strtod(line, NULL);
 }
 
-void TableEntry::set_elem_positions(const std::array<unsigned, ENTRY_ELEM_CNT> &el_pos_arr)
+bool operator<(const TableEntry &te1, const TableEntry &te2)
 {
-    elem_positions = el_pos_arr;
+    return te1.policy_id < te2.policy_id;
+}
+
+bool operator==(const TableEntry &te1, const TableEntry &te2)
+{
+    return te1.policy_id == te2.policy_id;
+}
+
+std::ostream& operator<<(std::ostream& os, const TableEntry &te)
+{
+    return os << std::setw(3) << te.line_num <<
+            std::setw(8) << te.policy_id <<
+            std::setw(8) << te.price << std::endl;
+}
+
+void TableEntry::throw_format_exc(unsigned line_num, unsigned col_num)
+{
+    std::ostringstream oss;
+    oss << "Неверный формат ячейки" << std::endl <<
+            "Строка " << line_num << ", столбец " <<
+            static_cast<char>('A' + col_num);
+    throw std::runtime_error(oss.str());
+}
+
+/* ## Discrepancy class ## */
+
+// Constructor of type, present in both tables
+Discrepancy::Discrepancy(const TableEntry &te0, const TableEntry &te1)
+    : policy_id(te0.policy_id), prices{te0.price, te1.price}, type(-1)
+{
+    const char *line = lr[0].read_line(te0.line_num);
+    auto v = csv_parse_line(line, elem_positions[0]);
+    full_name = std::string(v[0].first, v[0].second);
+}
+
+// Constructor of type, present only in one table
+Discrepancy::Discrepancy(unsigned table_ind, const TableEntry &te)
+    : policy_id(te.policy_id), type(table_ind)
+{
+    prices[table_ind] = te.price;
+    const char *line = lr[table_ind].read_line(te.line_num);
+    auto v = csv_parse_line(line, elem_positions[table_ind]);
+    full_name = std::string(v[0].first, v[0].second);
+}
+
+std::ostream& operator<<(std::ostream& os, const Discrepancy &dis)
+{
+    os << dis.full_name << "; " << dis.policy_id << "; ";
+    if (dis.type == -1) {
+        os << dis.prices[0] << "; " << dis.prices[1];
+    } else {
+        if (dis.type == 0) {
+            os << dis.prices[0] << ";x";
+        } else {
+            os << "x ;" << dis.prices[1];
+        }
+    }
+    return os << std::endl;
 }

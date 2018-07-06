@@ -1,0 +1,2 @@
+csv_parse_line: maybe making the output vector static will help
+main: maybe turning policy_id's into number will help with comparison time
