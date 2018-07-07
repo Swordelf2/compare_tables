@@ -31,7 +31,7 @@ csv_parse_line(const char *line, const std::vector<unsigned> &elem_positions)
                 } else if (*line == QUOTE && (*(line + 1) == '\0')) {
                     line += 1;
                 } else {
-                    cur_pos;
+                    throw cur_pos;
                 }
             } else if (*line) {
                 ++line;

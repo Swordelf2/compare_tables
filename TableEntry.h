@@ -39,11 +39,13 @@ public:
     std::string policy_id;
     unsigned prices[2];
 
-    static std::vector<unsigned> elem_positions[2];
+    static unsigned elem_positions[2];
     static LineReader *lr;
 private:
     // -1 for both, otherwise the number of the table in whcih the entry is present
     int type;
+
+    static std::string uint_to_money(unsigned price);
 };
 
 #endif

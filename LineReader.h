@@ -16,6 +16,8 @@ public:
     std::string buff;
 private:
     std::vector<std::ifstream::pos_type> line_pos;
+
+    inline void delete_trailing_cr();
 };
 
 #endif
