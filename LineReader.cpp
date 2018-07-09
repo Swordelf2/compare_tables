@@ -14,9 +14,12 @@ LineReader::LineReader(const char *file_name)
 
 const char * LineReader::next_line()
 {
-    std::ifstream::pos_type pos = f.tellg();
-    line_pos.push_back(pos);
-    if (!getline(f, buff) || buff.empty()) {
+    if (cur_line == line_pos.size()) {
+        std::ifstream::pos_type pos = f.tellg();
+        line_pos.push_back(pos);
+    }
+    ++cur_line;
+    if (!getline(f, buff)) {
         f.clear();
         return NULL;
     }
@@ -24,14 +27,21 @@ const char * LineReader::next_line()
     return buff.c_str();
 }
 
-#include <iostream>
-
-const char * LineReader::read_line(unsigned line_num)
+const char * LineReader::read_line(unsigned line)
 {
-    f.seekg(line_pos[line_num]);
-    getline(f, buff);
-    delete_trailing_cr();
-    return buff.c_str();
+    set_line(line);
+    return next_line();
+}
+
+void LineReader::set_line(unsigned line)
+{
+    cur_line = line;
+    f.seekg(line_pos[line]);
+}
+
+unsigned LineReader::get_line() const
+{
+    return cur_line;
 }
 
 void LineReader::delete_trailing_cr()

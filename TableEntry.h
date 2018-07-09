@@ -5,7 +5,17 @@
 #include <vector>
 #include <iostream>
 
+#include "Config.h"
 #include "LineReader.h"
+
+enum
+{
+    EL_FULL_NAME = 0,
+    EL_POLICY,
+    EL_DATE0,
+    EL_DATE1,
+    EL_PRICE
+};
 
 class TableEntry
 {
@@ -16,13 +26,15 @@ public:
     friend bool operator==(const TableEntry &te1, const TableEntry &te2);
     friend std::ostream& operator<<(std::ostream& os, const TableEntry &te);
 
+    static void Configure(LineReader lrs[], unsigned table_ind, const Config &cfg);
+
     unsigned line_num;
     std::string policy_id;
     unsigned price;
 
-    static std::vector<unsigned> elem_positions;
+    static unsigned elem_positions[2][Config::FIELDS_CNT];
 private:
-    static constexpr int ENTRY_ELEM_CNT = 3;
+    static unsigned cur_table;
     static inline void throw_format_exc(unsigned line_num, unsigned col_num);
 };
 
@@ -39,7 +51,6 @@ public:
     std::string policy_id;
     unsigned prices[2];
 
-    static unsigned elem_positions[2];
     static LineReader *lr;
 private:
     // -1 for both, otherwise the number of the table in whcih the entry is present

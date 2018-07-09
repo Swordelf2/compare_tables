@@ -5,5 +5,7 @@
 
 std::vector<std::pair<const char *, size_t>>
 csv_parse_line(const char *line, const std::vector<unsigned> &elem_positions);
+std::vector<std::pair<const char *, size_t>>
+csv_parse_whole_line(const char *line);
 
 #endif

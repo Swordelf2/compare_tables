@@ -3,6 +3,7 @@
 #include <utility>
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 
 #include "LineReader.h"
 #include "csv_parse.h"
@@ -11,48 +12,42 @@
 #include <cstring>
 
 static constexpr int INPUT_FILE_CNT = 2;
+static constexpr const char * CONFIG_FILE_NAME = "config.txt";
+
 // arguments
 enum Args {
-    ARG_COUNT = 8 + 1,
+    ARG_COUNT = 3 + 1,
     ARG_FILE0 = 1,
     ARG_FILE1,
     ARG_OUT_FILE,
-    ARG_POLICY0,
-    ARG_PRICE0,
-    ARG_POLICY1,
-    ARG_PRICE1,
-    ARG_FULLNAME
 };
-
-
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-    /* Configuration */
-    // Here we have to configure all the elem_positions in tables and other
-    // static variables
+    ofstream log_file("log.txt");
+    log_file << "This is a log" << endl;
     if (argc < ARG_COUNT) {
         return 1;
     }
+    try {
+
+    /* Configuration */
+    // Here we have to configure all the elem_positions in tables and other
+    // static variables
     LineReader lr[INPUT_FILE_CNT] = {argv[ARG_FILE0], argv[ARG_FILE1]};
-    TableEntry::elem_positions = { strtoul(argv[ARG_POLICY0], NULL, 0),
-            strtoul(argv[ARG_PRICE0], NULL, 0) };
-    Discrepancy::elem_positions[0] = strtoul(argv[ARG_FULLNAME], NULL, 0);
+    Config cfg(CONFIG_FILE_NAME);
     Discrepancy::lr = lr;
 
     vector<TableEntry> entries[INPUT_FILE_CNT];
     // Store all entries from files
     for (int i = 0; i < INPUT_FILE_CNT; ++i) {
+        TableEntry::Configure(lr, i, cfg);
         const char *line;
-        for (unsigned line_num = 0; (line = lr[i].next_line()); ++line_num) {
-            entries[i].emplace_back(line_num, line);
-        }
-        // reconfigure
-        if (i == 0) {
-            TableEntry::elem_positions = { strtoul(argv[ARG_POLICY1], NULL, 0),
-                    strtoul(argv[ARG_PRICE1], NULL, 0) };
+        while ((line = lr[i].next_line())
+                && isdigit(static_cast<unsigned char>(line[0]))) {
+            entries[i].emplace_back(lr[i].get_line() - 1, line);
         }
     }
 
@@ -87,5 +82,9 @@ int main(int argc, char *argv[])
     ofstream out_f(argv[ARG_OUT_FILE]);
     for (const Discrepancy &dis : dis_vec) {
         out_f << dis;
+    }
+    }
+    catch (exception &e) {
+        log_file << e.what() << endl;
     }
 }
