@@ -4,9 +4,6 @@
 #include <utility>
 #include <stdexcept>
 
-constexpr char QUOTE = '"';
-constexpr char SEP = ';';
-
 std::vector<std::pair<const char *, size_t>>
 csv_parse_line(const char *line, const std::vector<unsigned> &elem_positions)
 {
@@ -22,10 +19,17 @@ csv_parse_line(const char *line, const std::vector<unsigned> &elem_positions)
             } else if (*line == '\0') {
                 throw cur_pos;
             }
-            while (*line && *line != last) {
-                ++line;
-            }
             if (last == QUOTE) {
+                while (*line) {
+                    if (*line == QUOTE) {
+                        if (*(line + 1) == QUOTE) {
+                            ++line;
+                        } else {
+                            break;
+                        }
+                    }
+                    ++line;
+                }
                 if (*line == QUOTE && (*(line + 1) == SEP)) {
                     line += 2;
                 } else if (*line == QUOTE && (*(line + 1) == '\0')) {
@@ -33,8 +37,13 @@ csv_parse_line(const char *line, const std::vector<unsigned> &elem_positions)
                 } else {
                     throw cur_pos;
                 }
-            } else if (*line) {
-                ++line;
+            } else {
+                while (*line && *line != last) {
+                    ++line;
+                }
+                if (*line) {
+                    ++line;
+                }
             }
             ++cur_pos;
         }
@@ -49,12 +58,18 @@ csv_parse_line(const char *line, const std::vector<unsigned> &elem_positions)
         }
         end = line;
 
-        while (*end && *end != last) {
-            ++end;
-        }
-
         const char *start = line;
         if (last == QUOTE) {
+            while (*end) {
+                if (*end == QUOTE) {
+                    if (*(end + 1) == QUOTE) {
+                        ++end;
+                    } else {
+                        break;
+                    }
+                }
+                ++end;
+            }
             if (*end == QUOTE && (*(end + 1) == SEP)) {
                 line = end + 2;
             } else if (*end == QUOTE && (*(end + 1) == '\0')) {
@@ -62,10 +77,15 @@ csv_parse_line(const char *line, const std::vector<unsigned> &elem_positions)
             } else {
                 throw cur_pos;
             }
-        } else if (*end) {
-            line = end + 1;
         } else {
-            line = end;
+            while (*end && *end != last) {
+                ++end;
+            }
+            if (*end) {
+                line = end + 1;
+            } else {
+                line = end;
+            }
         }
         result.emplace_back(start, end - start);
         ++cur_pos;
@@ -88,12 +108,18 @@ csv_parse_whole_line(const char *line)
         }
         end = line;
 
-        while (*end && *end != last) {
-            ++end;
-        }
-
         const char *start = line;
         if (last == QUOTE) {
+            while (*end) {
+                if (*end == QUOTE) {
+                    if (*(end + 1) == QUOTE) {
+                        ++end;
+                    } else {
+                        break;
+                    }
+                }
+                ++end;
+            }
             if (*end == QUOTE && (*(end + 1) == SEP)) {
                 line = end + 2;
             } else if (*end == QUOTE && (*(end + 1) == '\0')) {
@@ -101,10 +127,15 @@ csv_parse_whole_line(const char *line)
             } else {
                 throw cur_pos;
             }
-        } else if (*end) {
-            line = end + 1;
         } else {
-            line = end;
+            while (*end && *end != last) {
+                ++end;
+            }
+            if (*end) {
+                line = end + 1;
+            } else {
+                line = end;
+            }
         }
         result.emplace_back(start, end - start);
         ++cur_pos;

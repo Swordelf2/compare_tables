@@ -27,6 +27,8 @@ TableEntry::TableEntry(unsigned line_num, const char *line) : line_num(line_num)
 {
     std::vector<unsigned> pos_needed = {
         elem_positions[cur_table][EL_POLICY],
+        elem_positions[cur_table][EL_DATE0],
+        elem_positions[cur_table][EL_DATE1],
         elem_positions[cur_table][EL_PRICE]
     };
     std::vector<std::pair<const char *, size_t>> els;
@@ -38,23 +40,27 @@ TableEntry::TableEntry(unsigned line_num, const char *line) : line_num(line_num)
 
     // set policy_id
     policy_id = std::string(els[0].first, els[0].second);
+    // set dates
+    date[0] = std::string(els[1].first, els[1].second);
+    date[1] = std::string(els[2].first, els[2].second);
 
     // set price
     // remove all spaces from that string
     std::string price_unspaced;
-    for (const char *price_ptr = els[1].first; price_ptr < els[1].first + els[1].second; ++price_ptr) {
+    for (const char *price_ptr = els[3].first; price_ptr < els[3].first + els[3].second; ++price_ptr) {
         if (!isspace(static_cast<unsigned char>(*price_ptr))) {
             price_unspaced.push_back(*price_ptr);
         }
     }
     const char *price_str = price_unspaced.c_str();
+    size_t price_len = price_unspaced.length();
 
     char * end_ptr;
     price = strtoul(price_str, &end_ptr, 0);
     price *= 100u;
     if (*end_ptr == ',' || *end_ptr == '.') {
         ++end_ptr;
-        unsigned cnt = price_str + els[1].second - end_ptr;
+        unsigned cnt = price_str + price_len - end_ptr;
         if (cnt > 2 || cnt == 0) {
             throw_format_exc(line_num, pos_needed[1]);
         }
@@ -62,7 +68,7 @@ TableEntry::TableEntry(unsigned line_num, const char *line) : line_num(line_num)
             ++end_ptr;
         }
         unsigned leftover = strtoul(end_ptr, &end_ptr, 0);
-        if (end_ptr != price_str + els[1].second) {
+        if (end_ptr != price_str + price_len) {
             throw_format_exc(line_num, pos_needed[1]);
         }
         if (cnt == 1) {
@@ -74,7 +80,19 @@ TableEntry::TableEntry(unsigned line_num, const char *line) : line_num(line_num)
 
 bool operator<(const TableEntry &te1, const TableEntry &te2)
 {
-    return te1.policy_id < te2.policy_id;
+    if (te1.policy_id < te2.policy_id) {
+        return true;
+    } else if (te1.policy_id == te2.policy_id) {
+        if (te1.date[0] < te2.date[0]) {
+            return true;
+        } else if (te1.date[0] == te2.date[0]) {
+            return te1.date[1] < te2.date[1];
+        } else {
+            return false;
+        }
+    } else {
+        return false;
+    }
 }
 
 bool operator==(const TableEntry &te1, const TableEntry &te2)
@@ -174,27 +192,45 @@ void TableEntry::throw_format_exc(unsigned line_num, unsigned col_num)
 
 // Constructor of type, present in both tables
 Discrepancy::Discrepancy(const TableEntry &te0, const TableEntry &te1)
-    : policy_id(te0.policy_id), prices{te0.price, te1.price}, type(-1)
+    : policy_id(te0.policy_id), date(te0.date), prices{te0.price, te1.price}, type(-1)
 {
     const char *line = lr[0].read_line(te0.line_num);
     auto v = csv_parse_line(line, { TableEntry::elem_positions[0][EL_FULL_NAME] });
-    full_name = std::string(v[0].first, v[0].second);
+    read_name(v[0].first, v[0].second);
 }
 
 // Constructor of type, present only in one table
 Discrepancy::Discrepancy(unsigned table_ind, const TableEntry &te)
-    : policy_id(te.policy_id), type(table_ind)
+    : policy_id(te.policy_id), date(te.date), type(table_ind)
 {
     prices[table_ind] = te.price;
     prices[!table_ind] = 0.0;
     const char *line = lr[table_ind].read_line(te.line_num);
     auto v = csv_parse_line(line, { TableEntry::elem_positions[table_ind][EL_FULL_NAME] });
-    full_name = std::string(v[0].first, v[0].second);
+    read_name(v[0].first, v[0].second);
+}
+
+void Discrepancy::read_name(const char *name, size_t cnt)
+{
+    const char *end_ptr = name + cnt;
+    for (; name < end_ptr; ++name)
+    {
+        if (*name == QUOTE) {
+            if (*(name + 1) == QUOTE) {
+                ++name;
+            } else {
+                throw std::runtime_error(
+                        std::string("Cannot read name ") + name);
+            }
+        }
+        full_name.push_back(*name);
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, const Discrepancy &dis)
 {
-    os << dis.full_name << ';' << dis.policy_id << ';';
+    os << dis.full_name << ';' << dis.policy_id << ';'
+            << dis.date[0] << ';' << dis.date[1] << ';';
     if (dis.type == -1) {
         os << Discrepancy::uint_to_money(dis.prices[0]) << ';' <<
                 Discrepancy::uint_to_money(dis.prices[1]);

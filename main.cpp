@@ -12,7 +12,8 @@
 #include <cstring>
 
 static constexpr int INPUT_FILE_CNT = 2;
-static constexpr const char * CONFIG_FILE_NAME = "config.txt";
+static constexpr const char * CONFIG_FILE_NAME = "Data/config.txt";
+static constexpr const char * TEMPL_FILE_NAME = "Data/templ.csv";
 
 // arguments
 enum Args {
@@ -26,6 +27,8 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
+    ofstream log("log.txt");
+    try {
     if (argc < ARG_COUNT) {
         return 1;
     }
@@ -75,9 +78,17 @@ int main(int argc, char *argv[])
         dis_vec.emplace_back(ind, *it[ind]);
     }
 
+    ifstream templ_file(TEMPL_FILE_NAME);
+    string header;
+    getline(templ_file, header);
+
     // print the out
     ofstream out_f(argv[ARG_OUT_FILE]);
-    for (const Discrepancy &dis : dis_vec) {
-        out_f << dis;
+    out_f << header << endl;
+    for (unsigned i = 1; i <= dis_vec.size(); ++i) {
+        out_f << i << ';' << dis_vec[i - 1];
+    }
+    } catch (exception &e) {
+        log << e.what() << endl;
     }
 }

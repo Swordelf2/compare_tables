@@ -30,6 +30,7 @@ public:
 
     unsigned line_num;
     std::string policy_id;
+    std::string date[2];
     unsigned price;
 
     static unsigned elem_positions[2][Config::FIELDS_CNT];
@@ -49,14 +50,16 @@ public:
 
     std::string full_name;
     std::string policy_id;
+    std::string date[2];
     unsigned prices[2];
 
     static LineReader *lr;
+    static std::string uint_to_money(unsigned price);
 private:
     // -1 for both, otherwise the number of the table in whcih the entry is present
     int type;
 
-    static std::string uint_to_money(unsigned price);
+    void read_name(const char *name, size_t cnt);
 };
 
 #endif
