@@ -26,12 +26,9 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-    ofstream log_file("log.txt");
-    log_file << "This is a log" << endl;
     if (argc < ARG_COUNT) {
         return 1;
     }
-    try {
 
     /* Configuration */
     // Here we have to configure all the elem_positions in tables and other
@@ -82,9 +79,5 @@ int main(int argc, char *argv[])
     ofstream out_f(argv[ARG_OUT_FILE]);
     for (const Discrepancy &dis : dis_vec) {
         out_f << dis;
-    }
-    }
-    catch (exception &e) {
-        log_file << e.what() << endl;
     }
 }

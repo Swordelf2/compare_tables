@@ -6,6 +6,7 @@
 
 #include <string>
 #include <cstring>
+#include <cctype>
 #include <sstream>
 #include <vector>
 #include <cstdlib>
@@ -39,7 +40,15 @@ TableEntry::TableEntry(unsigned line_num, const char *line) : line_num(line_num)
     policy_id = std::string(els[0].first, els[0].second);
 
     // set price
-    const char *price_str = els[1].first;
+    // remove all spaces from that string
+    std::string price_unspaced;
+    for (const char *price_ptr = els[1].first; price_ptr < els[1].first + els[1].second; ++price_ptr) {
+        if (!isspace(static_cast<unsigned char>(*price_ptr))) {
+            price_unspaced.push_back(*price_ptr);
+        }
+    }
+    const char *price_str = price_unspaced.c_str();
+
     char * end_ptr;
     price = strtoul(price_str, &end_ptr, 0);
     price *= 100u;
@@ -48,6 +57,9 @@ TableEntry::TableEntry(unsigned line_num, const char *line) : line_num(line_num)
         unsigned cnt = price_str + els[1].second - end_ptr;
         if (cnt > 2 || cnt == 0) {
             throw_format_exc(line_num, pos_needed[1]);
+        }
+        if (cnt == 2 && *end_ptr == '0') {
+            ++end_ptr;
         }
         unsigned leftover = strtoul(end_ptr, &end_ptr, 0);
         if (end_ptr != price_str + els[1].second) {
